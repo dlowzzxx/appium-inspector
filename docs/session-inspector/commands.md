@@ -54,6 +54,9 @@ Commands and execute methods may have additional properties specified by their d
 
     ![Command Parameters](./assets/images/commands/command-params.png)
 
+For `switchToWindow`, the parameter popup lists handles returned by `getWindowHandles` for the
+active session. Choose a handle or enter one manually if the driver cannot list windows.
+
 ## Command Result
 
 Upon finishing execution, any command or execute method will always trigger a new popup with the

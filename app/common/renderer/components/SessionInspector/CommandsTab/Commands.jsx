@@ -14,7 +14,7 @@ import styles from './Commands.module.css';
 /**
  * Contents of the commands tab.
  */
-const Commands = ({applyClientMethod, getSupportedSessionMethods, getItemColspan}) => {
+const Commands = ({applyClientMethod, executeDriverCommand, getSupportedSessionMethods, getItemColspan}) => {
   const [hasMethodsMap, setHasMethodsMap] = useState(null);
   const [driverCommands, setDriverCommands] = useState(null);
   const [driverExecuteMethods, setDriverExecuteMethods] = useState(null);
@@ -33,7 +33,11 @@ const Commands = ({applyClientMethod, getSupportedSessionMethods, getItemColspan
 
   const prepareCommand = (cmdName, cmdParams, isExecute) => {
     const adjustedCmdName = isExecute ? COMMAND_EXECUTE_SCRIPT : cmdName;
-    let adjustedCmdParams = curCommandParamValsRef.current.map(adjustParamValueType);
+    // Window handles are opaque strings, even if one looks like a number or JSON.
+    let adjustedCmdParams =
+      adjustedCmdName === 'switchToWindow'
+        ? curCommandParamValsRef.current
+        : curCommandParamValsRef.current.map(adjustParamValueType);
 
     // If we are about to run an execute method,
     // the parameters array needs to be turned into an object,
@@ -77,7 +81,7 @@ const Commands = ({applyClientMethod, getSupportedSessionMethods, getItemColspan
 
     const [newCmdName, newCmdParams] = prepareCommand(cmdName, cmdParams, isExecute);
     // Do not await - let the command run in the background without blocking the UI
-    runCommand(newCmdName, newCmdParams, !refresh);
+    runCommand(newCmdName, newCmdParams, !(refresh || newCmdName === 'switchToWindow'));
   };
 
   const clearCurrentCommand = () => {
@@ -115,6 +119,7 @@ const Commands = ({applyClientMethod, getSupportedSessionMethods, getItemColspan
           <CommandParametersModal
             curCommandDetails={curCommandDetails}
             curCommandParamValsRef={curCommandParamValsRef}
+            executeDriverCommand={executeDriverCommand}
             prepareAndRunCommand={prepareAndRunCommand}
             clearCurrentCommand={clearCurrentCommand}
           />

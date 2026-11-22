@@ -1,4 +1,5 @@
-import {Input, Modal, Space, Typography} from 'antd';
+import {AutoComplete, Input, Modal, Space, Typography} from 'antd';
+import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {isEmpty} from '../../../utils/common.js';
@@ -18,12 +19,49 @@ const formatParamInputLabel = (param) => {
   return monoName;
 };
 
+const WindowHandleInput = ({executeDriverCommand, onChange}) => {
+  const {t} = useTranslation();
+  const [handles, setHandles] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    const loadHandles = async () => {
+      try {
+        const {commandRes} = await executeDriverCommand({methodName: 'getWindowHandles'});
+        if (active) {
+          setHandles(Array.isArray(commandRes) ? commandRes : []);
+        }
+      } catch {
+        // Some drivers can switch windows without implementing window enumeration.
+        if (active) {
+          setHandles([]);
+        }
+      }
+    };
+    void loadHandles();
+    return () => {
+      active = false;
+    };
+  }, [executeDriverCommand]);
+
+  return (
+    <AutoComplete
+      aria-label={t('windowHandle')}
+      placeholder={handles === null ? t('loadingWindowHandles') : t('selectOrEnterWindowHandle')}
+      options={(handles ?? []).map((handle) => ({value: handle}))}
+      onChange={onChange}
+      style={{flex: 1, minWidth: 0}}
+    />
+  );
+};
+
 /**
  * Modal for entering command parameters.
  */
 const CommandParametersModal = ({
   curCommandDetails,
   curCommandParamValsRef,
+  executeDriverCommand,
   prepareAndRunCommand,
   clearCurrentCommand,
 }) => {
@@ -41,7 +79,14 @@ const CommandParametersModal = ({
       {(curCommandDetails.details.params ?? []).map((param, index) => (
         <Space.Compact block key={param.name} className={styles.commandArgInputRow}>
           <Space.Addon>{formatParamInputLabel(param)}</Space.Addon>
-          <Input onChange={(e) => (curCommandParamValsRef.current[index] = e.target.value)} />
+          {!curCommandDetails.isExecute && curCommandDetails.name === 'switchToWindow' && param.name === 'handle' ? (
+            <WindowHandleInput
+              executeDriverCommand={executeDriverCommand}
+              onChange={(value) => (curCommandParamValsRef.current[index] = value)}
+            />
+          ) : (
+            <Input onChange={(e) => (curCommandParamValsRef.current[index] = e.target.value)} />
+          )}
         </Space.Compact>
       ))}
     </Modal>

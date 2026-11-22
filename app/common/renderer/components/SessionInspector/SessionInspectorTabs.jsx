@@ -35,6 +35,7 @@ const SessionInspectorTabs = (props) => {
     isGestureEditorVisible,
     showScreenshot,
     applyClientMethod,
+    executeDriverCommand,
     getSupportedSessionMethods,
     featureCaps,
   } = props;
@@ -63,6 +64,7 @@ const SessionInspectorTabs = (props) => {
       children: (
         <Commands
           applyClientMethod={applyClientMethod}
+          executeDriverCommand={executeDriverCommand}
           getSupportedSessionMethods={getSupportedSessionMethods}
           getItemColspan={getItemColspan}
         />
