@@ -9,6 +9,7 @@ import {
   UNKNOWN_ERROR,
 } from '../../constants/session-inspector.js';
 import {isEqual} from '../../utils/common.js';
+import {findElementsByLocatorGroup} from '../../utils/locator-search.js';
 import {log} from '../../utils/logger.js';
 import {parseHtmlSource, setHtmlElementAttributes} from '../../utils/webview.js';
 
@@ -64,6 +65,7 @@ export default class InspectorDriver {
       strategy, // Optional. Element locator strategy
       selector, // Optional. Element fetch selector
       fetchArray = false, // Optional. Are we fetching an array of elements or just one?
+      locatorGroup, // Optional. Locators to resolve together for inspection.
       elementId, // Optional. Element being operated on
       args = [], // Optional. Arguments passed to method
       skipRefresh = false, // Optional. Do we want the updated source and screenshot?
@@ -113,6 +115,8 @@ export default class InspectorDriver {
           appMode,
         });
       }
+    } else if (locatorGroup) {
+      res = await this.fetchLocatorGroup(locatorGroup);
     } else if (strategy && selector) {
       if (fetchArray) {
         log.info(`Fetching elements with selector '${selector}' and strategy ${strategy}`);
@@ -197,6 +201,17 @@ export default class InspectorDriver {
       ...screenshotUpdate,
       ...windowSizeUpdate,
     };
+  }
+
+  async fetchLocatorGroup({locators, mode}) {
+    const start = Date.now();
+    const matches = await findElementsByLocatorGroup(this.driver, locators, mode);
+    for (const el of matches) {
+      const id = el.elementId;
+      // Preserve the variable and index attached by an earlier recorded search.
+      this.elementCache[id] ??= {el, id, variableType: 'string'};
+    }
+    return {ids: matches.map((el) => el.elementId), executionTime: Date.now() - start};
   }
 
   async fetchElements({strategy, selector}) {

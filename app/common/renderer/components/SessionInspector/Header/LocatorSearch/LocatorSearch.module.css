@@ -13,6 +13,12 @@
   font-family: monospace;
 }
 
+.locatorGroupRow {
+  display: grid;
+  grid-template-columns: minmax(0, 9rem) minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
 .searchResultsList {
   width: 100%;
   flex: 1;

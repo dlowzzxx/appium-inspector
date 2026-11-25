@@ -5,6 +5,7 @@ import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
 import InspectorDriver from '../../app/common/renderer/lib/appium/inspector-driver.js';
 import WDSessionStarter from '../../app/common/renderer/lib/appium/session-starter.js';
+import {LOCATOR_GROUP_MODE} from '../../app/common/renderer/utils/locator-search.js';
 
 const FAKE_DRIVER_PORT = 12121;
 
@@ -78,6 +79,52 @@ describe('InspectorDriver actions', function () {
       expect(inspectorDriver.elementCache[res.elements[1].id].variableType).toBe('string');
     });
   });
+  describe('.fetchLocatorGroup', function () {
+    const xpath = (selector) => ({strategy: 'xpath', selector});
+
+    it('intersects root searches without overwriting previously recorded element metadata', async function () {
+      const {elements} = await inspectorDriver.fetchElements(xpath('//MockListItem'));
+      const {ids} = await inspectorDriver.fetchLocatorGroup({
+        locators: [xpath('//MockListItem'), xpath('//*[@id="li"]')],
+        mode: LOCATOR_GROUP_MODE.ALL,
+      });
+      expect(ids).toEqual(elements.slice(0, 2).map(({id}) => id));
+      for (const element of elements) {
+        expect(inspectorDriver.elementCache[element.id]).toBe(element);
+      }
+    });
+
+    it('unions overlapping results and keeps looking after an empty search', async function () {
+      const {ids} = await inspectorDriver.fetchLocatorGroup({
+        locators: [xpath('//Missing'), xpath('//MockListItem'), xpath('//*[@id="li"]'), xpath('//MockButton')],
+        mode: LOCATOR_GROUP_MODE.ANY,
+      });
+      expect(ids).toHaveLength(7);
+      expect(new Set(ids).size).toBe(7);
+    });
+
+    it('looks for the next locator inside each parent and caches matches for inspection', async function () {
+      const {ids} = await inspectorDriver.fetchLocatorGroup({
+        locators: [xpath('//MockListView'), xpath('.//MockListItem[@id="li"]')],
+        mode: LOCATOR_GROUP_MODE.CHAIN,
+      });
+      expect(ids).toHaveLength(2);
+      for (const elementId of ids) {
+        const {commandRes} = await inspectorDriver.executeMethod({
+          elementId,
+          methodName: 'getElementRect',
+          skipRefresh: true,
+        });
+        expect(commandRes).toEqual({
+          x: expect.any(Number),
+          y: expect.any(Number),
+          width: expect.any(Number),
+          height: expect.any(Number),
+        });
+      }
+    });
+  });
+
   describe('.executeMethod', function () {
     it('should be able to call the elementClick method on a single element', async function () {
       const {id, variableName, variableType} = await inspectorDriver.fetchElement({

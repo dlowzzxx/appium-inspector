@@ -1,4 +1,4 @@
-import {Button, Input, Row, Space, Table} from 'antd';
+import {Button, ConfigProvider, Input, Row, Select, Space, Table} from 'antd';
 import {useTranslation} from 'react-i18next';
 
 import {BUTTON} from '../../../../constants/antd-types.js';
@@ -9,6 +9,7 @@ import {
   NATIVE_DRIVER_LOCATOR_STRATEGY_MAP as DRIVER_STRATEGIES,
   WEB_LOCATOR_STRATEGY_MAP as WEB_STRATEGIES,
 } from '../../../../constants/session-inspector.js';
+import {LOCATOR_GROUP_MODE} from '../../../../utils/locator-search.js';
 
 import inspectorStyles from '../../SessionInspector.module.css';
 import styles from './LocatorSearch.module.css';
@@ -67,15 +68,51 @@ const LocatorSearchFormStrategySelector = ({
 /**
  * Selector input field for locator search.
  */
-const LocatorSearchFormValueInputField = ({locatorSearchValue, setLocatorSearchValue}) => (
+const LocatorSearchFormValueInputField = ({locatorSearchValue, setLocatorSearchValue, label}) => (
   <Input.TextArea
     className={styles.locatorSelectorTextArea}
     onChange={(e) => setLocatorSearchValue(e.target.value)}
     value={locatorSearchValue}
+    aria-label={label}
     allowClear={true}
     rows={3}
   />
 );
+
+const LocatorGroupFields = ({strategies, locators, mode, setMode, updateLocator, removeLocator}) => {
+  const {t} = useTranslation();
+  const modeOptions = [
+    {value: LOCATOR_GROUP_MODE.ALL, label: t('locatorGroupAll')},
+    {value: LOCATOR_GROUP_MODE.ANY, label: t('locatorGroupAny')},
+    {value: LOCATOR_GROUP_MODE.CHAIN, label: t('locatorGroupChain')},
+  ];
+  const strategyOptions = strategies.map(([value, label]) => ({value, label}));
+
+  return (
+    <Space orientation="vertical" className={inspectorStyles.spaceContainer}>
+      {locators.map(({id, strategy, selector}, position) => (
+        <div className={styles.locatorGroupRow} key={id}>
+          <Select
+            aria-label={t('locatorGroupStrategy', {number: position + 2})}
+            value={strategy}
+            options={strategyOptions}
+            onChange={(value) => updateLocator(id, {strategy: value})}
+          />
+          <Input
+            aria-label={t('locatorGroupSelector', {number: position + 2})}
+            placeholder={t('selector')}
+            value={selector}
+            onChange={(event) => updateLocator(id, {selector: event.target.value})}
+          />
+          <Button onClick={() => removeLocator(id)} aria-label={t('locatorGroupRemove', {number: position + 2})}>
+            {t('locatorGroupRemoveButton')}
+          </Button>
+        </div>
+      ))}
+      <Select aria-label={t('locatorGroupMode')} value={mode} options={modeOptions} onChange={setMode} />
+    </Space>
+  );
+};
 
 /**
  * Table listing previous locator strategy and selector searches.
@@ -134,36 +171,57 @@ const LocatorSearchForm = ({
   currentContext,
   searchHistory,
   showSearchHistory,
+  extraLocators,
+  addLocator,
+  updateLocator,
+  removeLocator,
+  groupMode,
+  setGroupMode,
+  isSearchingForElements,
 }) => {
   const {t} = useTranslation();
 
   return (
-    <Space className={inspectorStyles.spaceContainer} orientation="vertical" size="small">
-      {t('locatorStrategy')}
-      <LocatorSearchFormStrategySelector
-        automationName={automationName}
-        currentContext={currentContext}
-        locatorSearchStrategy={locatorSearchStrategy}
-        setLocatorSearchStrategy={setLocatorSearchStrategy}
-      />
-      {t('selector')}
-      <LocatorSearchFormValueInputField
-        locatorSearchValue={locatorSearchValue}
-        setLocatorSearchValue={setLocatorSearchValue}
-      />
-      {showSearchHistory && (
-        <>
-          {t('searchHistory')}
-          <LocatorSearchFormHistoryTable
-            searchHistory={searchHistory}
-            locatorSearchStrategy={locatorSearchStrategy}
-            locatorSearchValue={locatorSearchValue}
-            setLocatorSearchStrategy={setLocatorSearchStrategy}
-            setLocatorSearchValue={setLocatorSearchValue}
+    <ConfigProvider componentDisabled={isSearchingForElements}>
+      <Space className={inspectorStyles.spaceContainer} orientation="vertical" size="small">
+        {t('locatorStrategy')}
+        <LocatorSearchFormStrategySelector
+          automationName={automationName}
+          currentContext={currentContext}
+          locatorSearchStrategy={locatorSearchStrategy}
+          setLocatorSearchStrategy={setLocatorSearchStrategy}
+        />
+        {t('selector')}
+        <LocatorSearchFormValueInputField
+          locatorSearchValue={locatorSearchValue}
+          setLocatorSearchValue={setLocatorSearchValue}
+          label={t('selector')}
+        />
+        {extraLocators.length > 0 && (
+          <LocatorGroupFields
+            strategies={locatorStrategies(automationName, currentContext)}
+            locators={extraLocators}
+            mode={groupMode}
+            setMode={setGroupMode}
+            updateLocator={updateLocator}
+            removeLocator={removeLocator}
           />
-        </>
-      )}
-    </Space>
+        )}
+        <Button onClick={addLocator}>{t('locatorGroupAdd')}</Button>
+        {showSearchHistory && !isSearchingForElements && (
+          <>
+            {t('searchHistory')}
+            <LocatorSearchFormHistoryTable
+              searchHistory={searchHistory}
+              locatorSearchStrategy={locatorSearchStrategy}
+              locatorSearchValue={locatorSearchValue}
+              setLocatorSearchStrategy={setLocatorSearchStrategy}
+              setLocatorSearchValue={setLocatorSearchValue}
+            />
+          </>
+        )}
+      </Space>
+    </ConfigProvider>
   );
 };
 

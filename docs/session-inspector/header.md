@@ -184,6 +184,19 @@ Selecting any element enables the element action items:
 | ![Tap Element](./assets/images/header/search-tap-element.png) | Tap the element |
 | ![Send or Clear Element Text](./assets/images/header/search-send-clear-element-text.png) | Enter text to send to the element, or clear its text |
 
+### Search with multiple locators
+
+Select **Add locator** to combine two or more locators in the current session.
+
+| Mode | What it finds |
+| --- | --- |
+| Match all locators | Elements found by every locator, with each locator evaluated from the session root. |
+| Match any locator | Elements found by at least one locator. Each element appears only once. |
+| Search within previous matches | Elements found by the final locator, after running each step within the results of the previous step. For a parent-to-child XPath, use a relative expression such as `.//Button` for the child. |
+
+Grouped search results can be highlighted or revealed in the source tree. The recorder and
+search history currently support single-locator searches.
+
 ## Toggle Recorder
 
 ![Start Recording Button](./assets/images/header/record-start-button.png) ![Stop Recording Button](./assets/images/header/record-stop-button.png)

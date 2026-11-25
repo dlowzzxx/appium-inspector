@@ -1,12 +1,12 @@
 import {IconClockX, IconHistory} from '@tabler/icons-react';
 import {Button, Col, Modal, Row, Space, Tooltip} from 'antd';
-import {useState} from 'react';
+import {useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {LOCATOR_SEARCH_HISTORY} from '../../../../../shared/setting-defs.js';
 import {BUTTON} from '../../../../constants/antd-types.js';
 import {getSetting, setSetting} from '../../../../polyfills.js';
-import {addLocatorSearchHistoryEntry} from '../../../../utils/locator-search.js';
+import {addLocatorSearchHistoryEntry, LOCATOR_GROUP_MODE} from '../../../../utils/locator-search.js';
 import LocatorSearchEmptyResults from './LocatorSearchEmptyResults.jsx';
 import LocatorSearchForm from './LocatorSearchForm.jsx';
 import LocatorSearchFoundResults from './LocatorSearchFoundResults.jsx';
@@ -27,10 +27,12 @@ const LocatorSearchModalFooter = ({
   showSearchHistory,
   setShowSearchHistory,
   clearSearchHistory,
+  searchDisabled,
 }) => {
   const {t} = useTranslation();
   const toggleHistoryLabel = t('toggleSearchHistory');
   const clearHistoryLabel = t('clearSearchHistory');
+  const submitLabel = locatedElements ? t('Done') : t('Search');
 
   return (
     <Row>
@@ -42,7 +44,7 @@ const LocatorSearchModalFooter = ({
                 aria-label={toggleHistoryLabel}
                 id="btnToggleSearchHistory"
                 icon={<IconHistory size={18} />}
-                disabled={!searchHistory.length}
+                disabled={isSearchingForElements || !searchHistory.length}
                 type={showSearchHistory ? BUTTON.PRIMARY : BUTTON.DEFAULT}
                 onClick={() => setShowSearchHistory(!showSearchHistory)}
               />
@@ -52,7 +54,7 @@ const LocatorSearchModalFooter = ({
                 aria-label={clearHistoryLabel}
                 id="btnClearSearchHistory"
                 icon={<IconClockX size={18} />}
-                disabled={!searchHistory.length}
+                disabled={isSearchingForElements || !searchHistory.length}
                 onClick={clearSearchHistory}
               />
             </Tooltip>
@@ -61,8 +63,14 @@ const LocatorSearchModalFooter = ({
       </Col>
       <Col span={12} className={styles.searchModalFooterRightCol}>
         {locatedElements && <Button onClick={(e) => e.preventDefault() || clearSearchResults()}>{t('Back')}</Button>}
-        <Button loading={isSearchingForElements} onClick={onSubmit} type={BUTTON.PRIMARY}>
-          {locatedElements ? t('Done') : t('Search')}
+        <Button
+          aria-label={submitLabel}
+          disabled={searchDisabled || isSearchingForElements}
+          loading={isSearchingForElements}
+          onClick={onSubmit}
+          type={BUTTON.PRIMARY}
+        >
+          {submitLabel}
         </Button>
       </Col>
     </Row>
@@ -82,6 +90,8 @@ const LocatorSearchModal = (props) => {
     locatedElements,
     locatorSearchStrategy,
     locatorSearchValue,
+    searchForElement,
+    searchForLocatorGroup,
     featureCaps,
     sessionSettings,
     currentContext,
@@ -90,6 +100,24 @@ const LocatorSearchModal = (props) => {
 
   const [searchHistory, setSearchHistory] = useState(retrievedSearchHistory);
   const [showSearchHistory, setShowSearchHistory] = useState(false);
+  const [extraLocators, setExtraLocators] = useState([]);
+  const [groupMode, setGroupMode] = useState(LOCATOR_GROUP_MODE.ALL);
+  const nextLocatorId = useRef(0);
+  const grouped = extraLocators.length > 0;
+  const locators = [{strategy: locatorSearchStrategy, selector: locatorSearchValue}, ...extraLocators];
+  const searchDisabled =
+    !locatedElements && grouped && locators.some(({strategy, selector}) => !strategy || !selector.trim());
+
+  const addLocator = () => {
+    const id = nextLocatorId.current++;
+    setExtraLocators((previous) => [...previous, {id, strategy: locatorSearchStrategy, selector: ''}]);
+  };
+  const updateLocator = (id, change) => {
+    setExtraLocators((previous) => previous.map((locator) => (locator.id === id ? {...locator, ...change} : locator)));
+  };
+  const removeLocator = (id) => {
+    setExtraLocators((previous) => previous.filter((locator) => locator.id !== id));
+  };
 
   const updateSearchHistory = async (updatedHistory) => {
     setSearchHistory(updatedHistory);
@@ -106,14 +134,20 @@ const LocatorSearchModal = (props) => {
   const onCancel = () => {
     const {hideLocatorSearchModal} = props;
     setShowSearchHistory(false);
+    setExtraLocators([]);
+    setGroupMode(LOCATOR_GROUP_MODE.ALL);
     hideLocatorSearchModal();
     clearSearchResults();
   };
 
   const onSubmit = async () => {
-    const {locatorSearchStrategy, locatorSearchValue, searchForElement} = props;
     if (locatedElements) {
       onCancel();
+    } else if (grouped) {
+      await searchForLocatorGroup(
+        locators.map(({strategy, selector}) => ({strategy, selector})),
+        groupMode,
+      );
     } else {
       const updatedHistory = addLocatorSearchHistoryEntry(searchHistory, {
         strategy: locatorSearchStrategy,
@@ -130,6 +164,9 @@ const LocatorSearchModal = (props) => {
       title={t('Search for element')}
       className={styles.searchModal}
       onCancel={onCancel}
+      closable={!isSearchingForElements}
+      keyboard={!isSearchingForElements}
+      mask={{closable: !isSearchingForElements}}
       footer={
         <LocatorSearchModalFooter
           locatedElements={locatedElements}
@@ -140,6 +177,7 @@ const LocatorSearchModal = (props) => {
           showSearchHistory={showSearchHistory}
           setShowSearchHistory={setShowSearchHistory}
           clearSearchHistory={clearSearchHistory}
+          searchDisabled={searchDisabled}
         />
       }
     >
@@ -153,11 +191,19 @@ const LocatorSearchModal = (props) => {
           currentContext={currentContext}
           searchHistory={searchHistory}
           showSearchHistory={showSearchHistory}
+          extraLocators={extraLocators}
+          addLocator={addLocator}
+          updateLocator={updateLocator}
+          removeLocator={removeLocator}
+          groupMode={groupMode}
+          setGroupMode={setGroupMode}
+          isSearchingForElements={isSearchingForElements}
         />
       )}
       {locatedElements && (
         <>
-          {locatedElements.length === 0 && (
+          {locatedElements.length === 0 && grouped && <i>{t('couldNotFindAnyElements')}</i>}
+          {locatedElements.length === 0 && !grouped && (
             <LocatorSearchEmptyResults
               locatorSearchStrategy={locatorSearchStrategy}
               locatorSearchValue={locatorSearchValue}
@@ -165,7 +211,7 @@ const LocatorSearchModal = (props) => {
               sessionSettings={sessionSettings}
             />
           )}
-          {locatedElements.length > 0 && <LocatorSearchFoundResults {...props} />}
+          {locatedElements.length > 0 && <LocatorSearchFoundResults {...props} grouped={grouped} />}
         </>
       )}
     </Modal>

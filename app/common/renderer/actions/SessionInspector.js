@@ -488,6 +488,19 @@ export function searchForElement(strategy, selector) {
   };
 }
 
+export function searchForLocatorGroup(locators, mode) {
+  return async (dispatch, getState) => {
+    dispatch({type: SEARCHING_FOR_ELEMENTS});
+    const callAction = callClientMethod({locatorGroup: {locators, mode}});
+    const result = await callAction(dispatch, getState);
+    dispatch({
+      type: SEARCHING_FOR_ELEMENTS_COMPLETED,
+      elements: result?.ids,
+      executionTime: result?.executionTime,
+    });
+  };
+}
+
 /**
  * Get all the find element times based on the find data source
  */

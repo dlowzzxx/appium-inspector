@@ -65,6 +65,7 @@ const LocatorSearchResultsElementActions = ({
   sourceXML,
   searchedForElementBounds,
   applyClientMethod,
+  grouped,
 }) => {
   const {t} = useTranslation();
   const findAndSelectLabel = t('Find and Select in Source');
@@ -85,51 +86,55 @@ const LocatorSearchResultsElementActions = ({
             onClick={() => findLocatedElementInSource(sourceJSON, sourceXML, searchedForElementBounds, locatedElement)}
           />
         </Tooltip>
-        <Tooltip title={tapLabel} placement="bottom">
-          <Button
-            aria-label={tapLabel}
-            disabled={!locatedElement}
-            icon={<IconFocus2 size={18} />}
-            onClick={() => applyClientMethod({methodName: 'elementClick', elementId: locatedElement})}
-          />
-        </Tooltip>
-        <Space.Compact className={styles.searchResultsActions}>
-          <Input
-            className={styles.searchResultsKeyInput}
-            disabled={!locatedElement}
-            placeholder={t('Enter Keys to Send')}
-            allowClear={true}
-            onChange={(e) => (sendKeysRef.current = e.target.value)}
-          />
-          <Tooltip title={sendKeysLabel} placement="bottom">
-            <Button
-              aria-label={sendKeysLabel}
-              disabled={!locatedElement}
-              icon={<IconSend2 size={18} />}
-              onClick={() =>
-                applyClientMethod({
-                  methodName: 'elementSendKeys',
-                  elementId: locatedElement,
-                  args: [sendKeysRef.current || ''],
-                })
-              }
-            />
-          </Tooltip>
-          <Tooltip title={clearLabel} placement="bottom">
-            <Button
-              aria-label={clearLabel}
-              disabled={!locatedElement}
-              id="btnClearElement"
-              icon={<IconEraser size={18} />}
-              onClick={() =>
-                applyClientMethod({
-                  methodName: 'elementClear',
-                  elementId: locatedElement,
-                })
-              }
-            />
-          </Tooltip>
-        </Space.Compact>
+        {!grouped && (
+          <>
+            <Tooltip title={tapLabel} placement="bottom">
+              <Button
+                aria-label={tapLabel}
+                disabled={!locatedElement}
+                icon={<IconFocus2 size={18} />}
+                onClick={() => applyClientMethod({methodName: 'elementClick', elementId: locatedElement})}
+              />
+            </Tooltip>
+            <Space.Compact className={styles.searchResultsActions}>
+              <Input
+                className={styles.searchResultsKeyInput}
+                disabled={!locatedElement}
+                placeholder={t('Enter Keys to Send')}
+                allowClear={true}
+                onChange={(e) => (sendKeysRef.current = e.target.value)}
+              />
+              <Tooltip title={sendKeysLabel} placement="bottom">
+                <Button
+                  aria-label={sendKeysLabel}
+                  disabled={!locatedElement}
+                  icon={<IconSend2 size={18} />}
+                  onClick={() =>
+                    applyClientMethod({
+                      methodName: 'elementSendKeys',
+                      elementId: locatedElement,
+                      args: [sendKeysRef.current || ''],
+                    })
+                  }
+                />
+              </Tooltip>
+              <Tooltip title={clearLabel} placement="bottom">
+                <Button
+                  aria-label={clearLabel}
+                  disabled={!locatedElement}
+                  id="btnClearElement"
+                  icon={<IconEraser size={18} />}
+                  onClick={() =>
+                    applyClientMethod({
+                      methodName: 'elementClear',
+                      elementId: locatedElement,
+                    })
+                  }
+                />
+              </Tooltip>
+            </Space.Compact>
+          </>
+        )}
       </Space>
     </Row>
   );
@@ -150,6 +155,7 @@ const LocatorSearchFoundResults = (props) => {
     findLocatedElementInSource,
     sourceJSON,
     sourceXML,
+    grouped,
   } = props;
 
   return (
@@ -171,6 +177,7 @@ const LocatorSearchFoundResults = (props) => {
           sourceXML={sourceXML}
           searchedForElementBounds={searchedForElementBounds}
           applyClientMethod={applyClientMethod}
+          grouped={grouped}
         />
       </Space>
     </Spin>
